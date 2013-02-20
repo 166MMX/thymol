@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head th:include="fragment/common::headerFragment" >
+	<script th:remove="all" type="text/javascript" src="http://code.jquery.com/jquery.min.js"></script>
+	<script th:remove="all" type="text/javascript" src="../assets/js/thymol.js"></script>
+	<script th:remove="all" type="text/javascript" src="../assets/js/setThPath.js"></script>
+</head>
+<body>
+<div class="container">
+	<br/>
+	<br/>
+	<br/>
+	<div class="span4 offset4 row-fluid">
+		<div id="userMain" class="span1 table-bordered">
+			<a href="#">
+				<img id="picture" src="http://www.gravatar.com/avatar/ffa96040bb4211cad1c66f385d8cb77b?s=64"
+					data-user="duyhai"
+					th:src="${'http://www.gravatar.com/avatar/'+currentUser.gravatar+'?s=64'}"
+					th:attr="data-user=${currentUser.login}">
+				</img>
+			</a>
+		</div>
+		<div class="span3 table-bordered">
+			<h2>
+				<span id="firstName" th:text="${currentUser.firstName}">DuyHai</span> 
+				<span id="lastName" th:text="${currentUser.lastName}">DOAN</span>
+			</h2>
+		</div>
+	</div>
+</div>
+</body>
+</html>
