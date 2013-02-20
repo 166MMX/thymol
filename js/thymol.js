@@ -20,7 +20,7 @@
 var thURL = "http://www.thymeleaf.org";
 var thPrefix = "th";
 var thProtocol = "file:///";
-var thCache = new Object;
+var thCache = {};
 
 $(function() {
 	thymol();
@@ -56,7 +56,6 @@ var thymol = function() {
 				var nsspec = this.localName.split(":");
 				if (nsspec.length > 0) {
 					thPrefix = nsspec[nsspec.length - 1];
-					return;
 				}
 			}
 		});
@@ -72,7 +71,6 @@ var thymol = function() {
 	var thFragEscp = "[" + thPrefix + "\\:fragment='";
 	var base = new ThNode(document, false, null, null, null, document.nodeName, "::", false, document);
 	process(base);
-	return;
 
 	function process(base) {
 		var n = base;
@@ -175,9 +173,9 @@ var thymol = function() {
 		element.removeAttribute(attr.name);
 	}
 
-	function processSwitch(element, base, attr, param) {
+	//noinspection JSUnusedLocalSymbols
+    function processSwitch(element, base, attr, param) {
 		var matched = false;
-		var haveDefault = false;
 		var thCaseSpecs = $(thCase.escp, element);
 		thCaseSpecs.each(function() {
 			var caseClause = this;
@@ -224,11 +222,10 @@ var thymol = function() {
 			$.get(fileName, function(content, status) {
 				if ("success" == status) {
 					if (thCache[filePart] == null) {
-						thCache[filePart] = new Object;
+						thCache[filePart] = {};
 					}
 					if (fragmentPart == "::") {
-						var htmlContent = $("html", content)[0];
-						thCache[filePart][fragmentPart] = htmlContent;
+                        thCache[filePart][fragmentPart] = $("html", content)[0];
 					}
 					else {
 						var fragSpec = thFragEscp + fragmentPart + "']";
@@ -273,21 +270,20 @@ var thymol = function() {
 				while (element.firstChild != null) {
 					element.removeChild(element.firstChild);
 				}
-				for (i = 0; i < content.childNodes.length; i++) {
+				for (var i = 0; i < content.childNodes.length; i++) {
 					element.appendChild(content.childNodes[i].cloneNode(true));
 				}
 			}			
 		}
 	}
 
+    //noinspection JSUnusedLocalSymbols
 	function ThNode(thDoc, visited, parentDoc, firstChild, nextSibling, fileName, fragName, isNode, element) {
 		this.thDoc = thDoc;
 		this.visited = visited;
 		this.parentDoc = parentDoc;
 		this.firstChild = firstChild;
 		this.nextSibling = nextSibling;
-		this.fileName = fileName;
-		this.fragName = fragName;
 		this.isNode = isNode;
 		this.element = element;
 	}
@@ -305,9 +301,6 @@ var thymol = function() {
 		this.getStringValue = function() {
 			return this.value;
 		};
-		this.getNumericValue = function() {
-			return Number(this.value);
-		};
 	}
 
 	function isTrue(arg) {
@@ -321,7 +314,7 @@ var thymol = function() {
 	function substitute(argValue) {
 		var result = argValue;
 		var args = argValue.match(/[$\*#]{(!?.*)}/);
-		if (args != null && args.length > 0) {
+		if (null != args && args.length > 0) {
 			var param = args[1];
 			if(param) {
 				var paramValue = urlParams[param];
