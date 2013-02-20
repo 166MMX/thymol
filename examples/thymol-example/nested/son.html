@@ -4,8 +4,11 @@
 		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 		<title>Son</title>
 	</head>
+	<script th:remove="all" type="text/javascript">
+ 		var thDebug=true;
+ 	</script>
 	<script th:remove="all" type="text/javascript" src="http://code.jquery.com/jquery.min.js"></script>
-	<script th:remove="all" type="text/javascript" src="../../js/thymol.js"></script>
+	<script th:remove="all" type="text/javascript" src="../../../js/thymol.js"></script>
 	<body>
 		<div th:fragment="aged-32">
 			<p>Man</p>
@@ -15,6 +18,6 @@
 			<div th:include="child::aged-11">cannot load template: child, fragment: aged-11</div>
 			<div th:include="child::aged-8">cannot load template: child, fragment: aged-8</div>
 		</div>
-		<p><a href="main.html">Back</a></p>
+		<p><a href="index.html">Back</a></p>
 	</body>
 </html>

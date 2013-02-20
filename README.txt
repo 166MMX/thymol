@@ -1,6 +1,12 @@
+0.1.1
+=====
+- Latest version of thymol.
+- Supports (limited) processing capability for expressions in th:include and th:subtituteby attribute values.
+- Fixes some problems with enabling debug mode.
+- Fixes some src path problems in example html files. 
+
 0.1.0
 ===========
-- Latest version of thymol.
 - Includes handling for conditionals: th:if, th:unless and th:switch.
 - Supports simple expression processing and variables prototyping using request parameters.
 - Introduces a debug mode of operation as a development aid.

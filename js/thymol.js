@@ -1,6 +1,6 @@
 /*-------------------- Thymol - the flavour of Thymeleaf --------------------*
 
-   Thymol version 0.1.0 Copyright 2012 James J. Benson.
+   Thymol version 0.1.1-SNAPSHOT Copyright 2012 James J. Benson.
    jjbenson .AT. users.sf.net
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,18 +41,20 @@ var thymol = function() {
 
 	var debug = false;
 
-	try {
-		if (thDebug != null) {
-			if (thDebug) {
-				debug = true;
+	var thDebugParam = urlParams["thDebug"];
+	if (thDebugParam) {
+		debug = thDebugParam.getBooleanValue();
+	}
+	else {
+		try {			
+			if( !(typeof thDebug === "undefined") ) {
+				if ( thDebug != null) {
+					debug = (thDebug==true);
+				}								
 			}
 		}
-	}
-	catch (err) {
-	}
-
-	if (isTrue("thDebug")) {
-		debug = true;
+		catch (err) {
+		}				
 	}
 
 	$.ajaxSetup({
@@ -133,15 +135,16 @@ var thymol = function() {
 				var thAttr = this;
 				if (thIncl.name == thAttr.name || thSubs.name == thAttr.name) {
 					var child = processImport(element, base, thAttr);
-					if (count == 0) {
-						base.firstChild = child;
+					if( child != null ) {
+						if (count == 0) {
+							base.firstChild = child;
+						}
+						else {
+							last.nextSibling = child;
+						}
+						last = child;
+						count++;						
 					}
-					else {
-						last.nextSibling = child;
-					}
-					;
-					last = child;
-					count++;
 				}
 			});
 		});
@@ -213,28 +216,29 @@ var thymol = function() {
 	}
 
 	function processImport(element, base, attr) {
+		var importNode = null;
 		var filePart = null;
 		var fragmentPart = "::";
 		if (attr.value.indexOf("::") < 0) {
-			filePart = attr.value;
+			filePart = substitute(attr.value);
 		}
 		else {
 			var names = attr.value.split("::");
-			filePart = names[0].trim();
-			fragmentPart = names[1].trim();
-		}
-		if (thCache[filePart] == null) {
-			thCache[filePart] = new Object;
+			filePart = substitute(names[0].trim());
+			fragmentPart = substitute(names[1].trim());
 		}
 		var isNode = (thSubs == attr.localName);
-		if (thCache[filePart][fragmentPart] != null) {
+		if (thCache[filePart] != null && thCache[filePart][fragmentPart] != null) {
 			isNode = ((thSubs == attr.localName) || (fragmentPart == "::"));
+			importNode = new ThNode(thCache[filePart][fragmentPart], false, base, null, null, filePart, fragmentPart, isNode, element);
 		}
 		else {
 			var fileName = filePart + ".html";
-			var imported = false;
 			$.get(fileName, function(content, status) {
 				if ("success" == status) {
+					if (thCache[filePart] == null) {
+						thCache[filePart] = new Object;
+					}
 					if (fragmentPart == "::") {
 						var htmlContent = $("html", content)[0];
 						thCache[filePart][fragmentPart] = htmlContent;
@@ -246,17 +250,18 @@ var thymol = function() {
 							thCache[filePart][fragmentPart] = this;
 						});
 					}
-					imported = true;
+					importNode = new ThNode(thCache[filePart][fragmentPart], false, base, null, null, filePart, fragmentPart, isNode, element);
 				}
 				else if (debug) {
 					window.alert("file read failed: " + filePart + " fragment: " + fragmentPart);
 				}
 			}, "xml");
-			if (!imported && debug) {
+			if (importNode == null && debug) {
 				window.alert("fragment import failed: " + filePart + " fragment: " + fragmentPart);
 			}
 		}
-		return new ThNode(thCache[filePart][fragmentPart], false, base, null, null, filePart, fragmentPart, isNode, element);
+		element.removeAttribute(attr.name);		
+		return importNode;
 	}
 
 	function doReplace(isNode, element, content) {
@@ -304,6 +309,21 @@ var thymol = function() {
 			return p.getBooleanValue();
 		}
 		return false;
+	}
+	
+	function substitute(argValue) {
+		var result = argValue;
+		var args = argValue.match(/[$\*#]{(!?.*)}/);
+		if (args != null && args.length > 0) {
+			var param = args[1];
+			if(param) {
+				var paramValue = urlParams[param];
+				if (paramValue) {
+					result = paramValue.value;
+				}					
+			}		
+		}			
+		return result;
 	}
 
 };
