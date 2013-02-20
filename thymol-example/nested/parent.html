@@ -4,7 +4,7 @@
 		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 		<title>Parent</title>
 	</head>
-	<script th:remove="all" type="text/javascript" src="../../js/jquery-1.7.1.js"></script>
+	<script th:remove="all" type="text/javascript" src="http://code.jquery.com/jquery.min.js"></script>
 	<script th:remove="all" type="text/javascript" src="../../js/thymol.js"></script>
 	<body>
 		<div th:fragment="aged-62">
@@ -14,5 +14,6 @@
 			<div th:include="son::aged-32">cannot load template: son, fragment: aged-32</div>
 			<div th:include="daughter::aged-36">cannot load template: daughter, fragment: aged-36</div>
 		</div>
+		<p><a href="main.html">Back</a></p>
 	</body>
 </html>

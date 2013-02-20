@@ -1,6 +1,6 @@
 /*-------------------- Thymol - the flavour of Thymeleaf --------------------*
 
-   Thymol version 0.0.3-SNAPSHOT Copyright 2012 James J. Benson.
+   Thymol version 0.1.0 Copyright 2012 James J. Benson.
    jjbenson .AT. users.sf.net
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,134 +21,289 @@ var thURL = "http://www.thymeleaf.org";
 var thPrefix = "th";
 var thCache = new Object;
 
-$(function(){
-  thymol();
- });
+$(function() {
+	thymol();
+});
 
 var thymol = function() {
-	
-	$.ajaxSetup({
-		async: false
-	});
-	
-	thGetPrefix();
-	var thIncl =  thPrefix + ":include";
-	var thSubs =  thPrefix + ":substituteby";
-	var thInclEscp = "[" + thPrefix + "\\:include]";
-	var thSubsEscp = "[" + thPrefix + "\\:substituteby]";
-	var thFragEscp = "[" + thPrefix + "\\:fragment='";
-	var root = {thDoc: document, visited: false, parentDoc: null, firstChild: null, nextSibling: null, fileName: document.nodeName, fragName: "::", isNode: false, element: document };
-	process(root);
-			
-	
-	function process(root) {
-	  var n = root;
-	  while(n.thDoc) {
-	  	getChildren( n );
-	    if (n.firstChild && n.firstChild.thDoc && !n.visited) {
-	      n.visited = true;
-	      n = n.firstChild;
-	    }
-	    else {
-		  	doReplace(n.isNode,n.element,n.thDoc);
-	      if (n.nextSibling && n.nextSibling.thDoc) {      	      
-	        n = n.nextSibling;
-	      }
-	      else {
-	        if (n == root)
-	          break;
-	        else {      	
-	          n = n.parentDoc;
-	        }
-	      }
-	    }
-	  }
+
+	var urlParams = {};
+	(function() {
+		var e, a = /\+/g, r = /([^&=]+)=?([^&]*)/g, d = function(s) {
+			return decodeURIComponent(s.replace(a, " "));
+		}, f = function(s) {
+			return new Param(d(s));
+		}, q = window.location.search.substring(1);
+		while (e = r.exec(q)) {
+			urlParams[d(e[1])] = f(e[2]);
+		}
+	})();
+
+	var debug = false;
+
+	try {
+		if (thDebug != null) {
+			if (thDebug) {
+				debug = true;
+			}
+		}
+	}
+	catch (err) {
 	}
 
-	
+	if (isTrue("thDebug")) {
+		debug = true;
+	}
+
+	$.ajaxSetup({
+		async : false
+	});
+
+	(function() {
+		var htmlTag = $("html")[0];
+		$(htmlTag.attributes).each(function() {
+			if (thURL == this.value) {
+				var nsspec = this.localName.split(":");
+				if (nsspec.length > 0) {
+					thPrefix = nsspec[nsspec.length - 1];
+					return;
+				}
+			}
+		});
+	})();
+
+	var thIncl = new ThObj("include");
+	var thSubs = new ThObj("substituteby");
+	var thIf = new ThObj("if");
+	var thUnless = new ThObj("unless");
+	var thSwitch = new ThObj("switch");
+	var thCase = new ThObj("case");
+
+	var thFragEscp = "[" + thPrefix + "\\:fragment='";
+	var root = new ThNode(document, false, null, null, null, document.nodeName, "::", false, document);
+	process(root);
+
+	function process(root) {
+		var n = root;
+		while (n.thDoc) {
+			getChildren(n);
+			if (n.firstChild && n.firstChild.thDoc && !n.visited) {
+				n.visited = true;
+				n = n.firstChild;
+			}
+			else {
+				doReplace(n.isNode, n.element, n.thDoc);
+				if (n.nextSibling && n.nextSibling.thDoc) {
+					n = n.nextSibling;
+				}
+				else {
+					if (n == root)
+						break;
+					else {
+						n = n.parentDoc;
+					}
+				}
+			}
+		}
+	}
+
 	function getChildren(base) {
-		var thInclSpecs = $( thInclEscp,base.thDoc );
-		var thSubsSpecs = $( thSubsEscp,base.thDoc );
-		var ths = $(thInclSpecs).add(thSubsSpecs);		
-		var count = 0;
-		var last=null;
+		var thIfSpecs = $(thIf.escp, base.thDoc);
+		var thUnlessSpecs = $(thUnless.escp, base.thDoc);
+		var thSwitchSpecs = $(thSwitch.escp, base.thDoc);
+		var ths = $(thIfSpecs).add(thUnlessSpecs).add(thSwitchSpecs);
 		ths.each(function() {
 			var element = this;
 			$(element.attributes).each(function() {
 				var thAttr = this;
-				if( thIncl == thAttr.name || thSubs == thAttr.name ) {
-					var filePart = null;
-					var fragmentPart = "::";
-					if( thAttr.value.indexOf("::") < 0 ) {
-						filePart = thAttr.value;
+				if (thIf.name == thAttr.name || thUnless.name == thAttr.name || thSwitch.name == thAttr.name) {
+					processConditional(element, base, thAttr);
+				}
+			});
+		});
+
+		var thInclSpecs = $(thIncl.escp, base.thDoc);
+		var thSubsSpecs = $(thSubs.escp, base.thDoc);
+		ths = $(thInclSpecs).add(thSubsSpecs);
+		var count = 0;
+		var last = null;
+		ths.each(function() {
+			var element = this;
+			$(element.attributes).each(function() {
+				var thAttr = this;
+				if (thIncl.name == thAttr.name || thSubs.name == thAttr.name) {
+					var child = processImport(element, base, thAttr);
+					if (count == 0) {
+						base.firstChild = child;
 					}
 					else {
-						var names = thAttr.value.split("::");
-						filePart = names[0].trim();			
-						fragmentPart = names[1].trim();
-					};
-					if( thCache[filePart] == null ) {
-						thCache[filePart] = new Object;
-					};
-					var isNode = (thSubs == thAttr.localName);
-					if(thCache[filePart][fragmentPart]!=null) {
-						isNode = ((thSubs == thAttr.localName) || (fragmentPart == "::"));
+						last.nextSibling = child;
 					}
-					else {
-						var fileName = filePart + ".html";					
-						$.get(fileName, function(content,status) {
-							if( "success" == status ) {
-								if( fragmentPart == "::" ) {
-									var htmlContent = $("html",content)[0];
-									thCache[filePart][fragmentPart] = htmlContent;
-								}
-								else {
-									var fragSpec = thFragEscp + fragmentPart + "']";   
-									var fragArray = $(fragSpec,content);
-									$(fragArray).each(function() {
-										thCache[filePart][fragmentPart] = this;
-									});                	   								
-								}
-							}
-							else {
-								window.alert("read failed file: " + filePart + " fragment: " + fragmentPart);
-							}
-						}, "xml" );										                 
-					};
-					var child = {thDoc: thCache[filePart][fragmentPart], visited: false, parentDoc: base, firstChild: null, nextSibling: null, fileName: filePart, fragName: fragmentPart, isNode: isNode, element: element };
-					if( count == 0 ) {
-						base.firstChild=child;
-					}
-					else {
-						last.nextSibling=child;
-					};
-					last=child;
+					;
+					last = child;
 					count++;
 				}
 			});
 		});
-	};
+	}
 
-	function thGetPrefix() {
-		var htmlTag = $("html")[0];
-		$(htmlTag.attributes).each(function() {
-			if( thURL == this.value ) {
-				var nsspec = this.localName.split(":");
-				if( nsspec.length > 0 ) {
-					thPrefix = nsspec[nsspec.length-1];
-					return;
-				}			 
+	function processConditional(element, base, attr) {
+		var args = attr.value.match(/[$\*#]{(!?.*)}/);
+		var processed = false;
+		if (args.length > 0) {
+			var param = args[1];
+			if (thSwitch.name == attr.name) {
+				processed = processSwitch(element, base, attr, param);
+			}
+			else {
+				var negate = false;
+				if (args[1].charAt(0) == '!') {
+					negate = true;
+					param = args[1].substring(1);
+				}
+				;
+				if ((!negate && isTrue(param)) || (negate && !isTrue(param))) {
+					if (thUnless.name == attr.name) { // true for "if" and
+						// false for "unless"
+						element.innerHTML = "";
+					}
+					processed = true;
+				}
+				else {
+					if (thIf.name == attr.name) { // false for "if", true for
+						// "unless"
+						element.innerHTML = "";
+					}
+					processed = true;
+				}
+
+			}
+		}
+		if (!processed && debug) {
+			window.alert("thymol.processConditional cannot process: " + attr.name + "=\"" + attr.value + "\"\n" + element.innerHTML);
+		}
+		element.removeAttribute(attr.name);
+	}
+
+	function processSwitch(element, base, attr, param) {
+		var matched = false;
+		var haveDefault = false;
+		var thCaseSpecs = $(thCase.escp, element);
+		thCaseSpecs.each(function() {
+			var caseClause = this;
+			var remove = true;
+			$(caseClause.attributes).each(function() {
+				var ccAttr = this;
+				if (thCase.name == ccAttr.name) {
+					if (!matched) {
+						var s = urlParams[param];
+						if (ccAttr.value == "*" || (s && (s.getStringValue() == ccAttr.value))) {
+							matched = true;
+							remove = false;
+						}
+					}
+					caseClause.removeAttribute(ccAttr.name);
+				}
+			});
+			if (remove) {
+				caseClause.innerHTML = "";
 			}
 		});
-	};
-	
-	function doReplace(isNode,element,content) {
-		if( isNode ) {
-			element.parentNode.replaceChild(content.cloneNode(true),element);
+		return matched;
+	}
+
+	function processImport(element, base, attr) {
+		var filePart = null;
+		var fragmentPart = "::";
+		if (attr.value.indexOf("::") < 0) {
+			filePart = attr.value;
 		}
 		else {
-			element.innerHTML=content.innerHTML;			
+			var names = attr.value.split("::");
+			filePart = names[0].trim();
+			fragmentPart = names[1].trim();
 		}
-	};
-	
+		if (thCache[filePart] == null) {
+			thCache[filePart] = new Object;
+		}
+		var isNode = (thSubs == attr.localName);
+		if (thCache[filePart][fragmentPart] != null) {
+			isNode = ((thSubs == attr.localName) || (fragmentPart == "::"));
+		}
+		else {
+			var fileName = filePart + ".html";
+			var imported = false;
+			$.get(fileName, function(content, status) {
+				if ("success" == status) {
+					if (fragmentPart == "::") {
+						var htmlContent = $("html", content)[0];
+						thCache[filePart][fragmentPart] = htmlContent;
+					}
+					else {
+						var fragSpec = thFragEscp + fragmentPart + "']";
+						var fragArray = $(fragSpec, content);
+						$(fragArray).each(function() {
+							thCache[filePart][fragmentPart] = this;
+						});
+					}
+					imported = true;
+				}
+				else if (debug) {
+					window.alert("file read failed: " + filePart + " fragment: " + fragmentPart);
+				}
+			}, "xml");
+			if (!imported && debug) {
+				window.alert("fragment import failed: " + filePart + " fragment: " + fragmentPart);
+			}
+		}
+		return new ThNode(thCache[filePart][fragmentPart], false, base, null, null, filePart, fragmentPart, isNode, element);
+	}
+
+	function doReplace(isNode, element, content) {
+		if (isNode) {
+			element.parentNode.replaceChild(content.cloneNode(true), element);
+		}
+		else {
+			element.innerHTML = content.innerHTML;
+		}
+	}
+
+	function ThNode(thDoc, visited, parentDoc, firstChild, nextSibling, fileName, fragName, isNode, element) {
+		this.thDoc = thDoc;
+		this.visited = visited;
+		this.parentDoc = parentDoc;
+		this.firstChild = firstChild;
+		this.nextSibling = nextSibling;
+		this.fileName = fileName;
+		this.fragName = fragName;
+		this.isNode = isNode;
+		this.element = element;
+	}
+
+	function ThObj(suffix) {
+		this.name = thPrefix + ":" + suffix;
+		this.escp = "[" + thPrefix + "\\:" + suffix + "]";
+	}
+
+	function Param(valueArg) {
+		this.value = valueArg;
+		this.getBooleanValue = function() {
+			return !(this.value == "false" || this.value == "off" || this.value == "no");
+		};
+		this.getStringValue = function() {
+			return this.value;
+		};
+		this.getNumericValue = function() {
+			return Number(this.value);
+		};
+	}
+
+	function isTrue(arg) {
+		var p = urlParams[arg];
+		if (p) {
+			return p.getBooleanValue();
+		}
+		return false;
+	}
+
 };
